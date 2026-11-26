@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1120" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TechBook AI" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="manifest" href="./manifest.json" />
+  <title>TechBook PDF AI v6.5 — Tradutor &amp; Resumo</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #070b14;
+      --bg-grad: radial-gradient(circle at top right, rgba(6, 182, 212, 0.14), transparent 45%),
+                 radial-gradient(circle at bottom left, rgba(139, 92, 246, 0.12), transparent 45%);
+      --surface: rgba(17, 24, 39, 0.90);
+      --surface-solid: #111827;
+      --surface-2: #1e293b;
+      --border: rgba(148, 163, 184, 0.20);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #06b6d4;
+      --primary-2: #3b82f6;
+      --accent: #10b981;
+      --purple: #8b5cf6;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+      --safe-bottom: env(safe-area-inset-bottom, 12px);
+    }
+
+    [data-theme="light"] {
+      --bg: #f1f5f9;
+      --bg-grad: radial-gradient(circle at top right, rgba(6, 182, 212, 0.12), transparent 50%),
+                 radial-gradient(circle at bottom left, rgba(99, 102, 241, 0.10), transparent 50%);
+      --surface: rgba(255, 255, 255, 0.94);
+      --surface-solid: #ffffff;
+      --surface-2: #e2e8f0;
+      --border: rgba(15, 23, 42, 0.12);
+      --text: #0f172a;
+      --muted: #475569;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      background-image: var(--bg-grad);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      min-height: 100dvh;
+      overscroll-behavior-y: none;
+    }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 40;
+      background: var(--surface);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-icon {
+      width: 38px; height: 38px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--purple));
+      display: grid; place-items: center; color: #fff;
+      box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+      flex-shrink: 0;
+    }
+    .brand h1 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+    .brand span { font-size: 11px; color: var(--primary); font-weight: 600; display: block; }
+
+    .top-actions { display: flex; align-items: center; gap: 6px; }
+    .chip {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 999px; padding: 5px 10px; font-size: 10.5px;
+      font-weight: 700; color: var(--muted);
+      display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+    }
+    .chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .chip.active { color: var(--accent); border-color: rgba(16, 185, 129, 0.4); }
+    .chip.active .chip-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+    .icon-btn {
+      width: 34px; height: 34px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+      display: grid; place-items: center; cursor: pointer; transition: 0.15s;
+    }
+    .icon-btn:active { transform: scale(0.92); }
+
+    .container { max-width: 920px; margin: 0 auto; padding: 16px 14px calc(96px + var(--safe-bottom)); }
+    .tab-panel { display: none; animation: fadeUp 0.22s ease; }
+    .tab-panel.active { display: block; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card {
+      background: var(--surface); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow);
+    }
+    .card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .card-title { font-size: 14px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .card-title svg { width: 17px; height: 17px; color: var(--primary); }
+
+    .dropzone {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      border: 2px dashed rgba(6, 182, 212, 0.45); border-radius: 16px;
+      padding: 24px 16px; text-align: center;
+      background: linear-gradient(180deg, rgba(6, 182, 212, 0.08), rgba(139, 92, 246, 0.05));
+      cursor: pointer; transition: 0.2s;
+    }
+    .dropzone.dragover, .dropzone:active { border-color: var(--primary); background: rgba(6, 182, 212, 0.16); transform: scale(0.99); }
+    .dropzone input { display: none; }
+    .dz-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+      display: grid; place-items: center; color: var(--primary);
+    }
+    .dz-main { font-size: 15px; font-weight: 800; }
+    .dz-sub { font-size: 12px; color: var(--muted); max-width: 340px; }
+
+    .file-card {
+      display: none; margin-top: 12px; padding: 12px 14px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.1));
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .file-meta strong { display: block; font-size: 13.5px; word-break: break-all; }
+    .file-meta span { font-size: 11.5px; color: var(--muted); }
+    .lang-pill {
+      background: rgba(139, 92, 246, 0.22); border: 1px solid rgba(139, 92, 246, 0.5);
+      color: #c4b5fd; padding: 6px 11px; border-radius: 10px;
+      font-size: 11.5px; font-weight: 700; text-align: right;
+    }
+    [data-theme="light"] .lang-pill { color: #5b21b6; }
+
+    .lang-bar { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: end; margin-top: 14px; }
+    @media (max-width: 480px) {
+      .lang-bar { grid-template-columns: 1fr; }
+      .swap-btn { width: 100%; height: 36px; }
+    }
+    .swap-btn {
+      width: 42px; height: 42px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--primary);
+      font-size: 18px; font-weight: 800; cursor: pointer; display: grid; place-items: center; transition: 0.2s;
+    }
+    .swap-btn:active { transform: rotate(180deg) scale(0.92); }
+
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .field { flex: 1; min-width: 110px; }
+    .field label {
+      display: block; font-size: 11px; font-weight: 700;
+      color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .field input, .field select {
+      width: 100%; height: 42px; background: var(--surface-2);
+      border: 1px solid var(--border); color: var(--text);
+      border-radius: 12px; padding: 0 12px; font-size: 13.5px; font-weight: 600; outline: none;
+    }
+    .field input:focus, .field select:focus { border-color: var(--primary); }
+
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-top: 12px; padding: 10px 12px;
+      background: var(--surface-2); border-radius: 12px; border: 1px solid var(--border); cursor: pointer;
+    }
+    .toggle-row span { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+    .toggle-row small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+    .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: #475569; border-radius: 999px; transition: 0.2s; }
+    .slider::before {
+      content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: 0.2s;
+    }
+    .switch input:checked + .slider { background: var(--primary); }
+    .switch input:checked + .slider::before { transform: translateX(20px); }
+
+    .engine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 560px) { .engine-grid { grid-template-columns: 1fr; } }
+    .engine-card {
+      border: 1.5px solid var(--border); border-radius: 14px; padding: 12px;
+      background: var(--surface-2); cursor: pointer; transition: 0.18s;
+    }
+    .engine-card.selected {
+      border-color: var(--primary); background: rgba(6, 182, 212, 0.12);
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+    }
+    .engine-card h3 { margin: 0 0 4px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .engine-card p { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+    .badge { font-size: 9.5px; padding: 2px 7px; border-radius: 6px; font-weight: 800; text-transform: uppercase; }
+    .badge-cloud { background: rgba(6, 182, 212, 0.2); color: #22d3ee; }
+    .badge-local { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    [data-theme="light"] .badge-cloud { color: #0369a1; }
+    [data-theme="light"] .badge-local { color: #047857; }
+
+    .btn {
+      border: 1px solid var(--border); border-radius: 12px; padding: 11px 16px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      transition: 0.15s; color: var(--text); background: var(--surface-2);
+    }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; border: none; box-shadow: 0 4px 14px rgba(6, 182, 212, 0.3); }
+    .btn-purple { background: linear-gradient(135deg, var(--purple), #6366f1); color: #fff; border: none; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3); }
+    .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.28); }
+    .btn-warn { background: rgba(245, 158, 11, 0.16); border-color: var(--warn); color: #f59e0b; }
+    .btn-danger { background: rgba(239, 68, 68, 0.16); border-color: var(--danger); color: #ef4444; }
+    .btn-sm { padding: 6px 11px; font-size: 11.5px; border-radius: 9px; }
+    .btn-block { width: 100%; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+    @media (max-width: 540px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    .stat-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 13px; padding: 10px 8px; text-align: center; }
+    .stat-val { font-size: 19px; font-weight: 800; color: var(--primary); }
+    .stat-lbl { font-size: 10.5px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+
+    .progress-wrap { background: var(--surface-2); border-radius: 999px; height: 12px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 8px; }
+    .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--purple), var(--accent)); transition: width 0.25s ease; }
+    .status-line { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+
+    .summary-list { display: flex; flex-direction: column; gap: 12px; max-height: 520px; overflow-y: auto; padding-right: 2px; }
+    .chap-card {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-left: 4px solid var(--purple); border-radius: 13px; padding: 13px 14px;
+    }
+    .chap-card h4 { margin: 0 0 8px; font-size: 14px; color: var(--primary); }
+    .chap-card ul { margin: 0; padding-left: 18px; }
+    .chap-card li { font-size: 13px; line-height: 1.55; margin-bottom: 6px; color: var(--text); }
+    .empty-state {
+      text-align: center; padding: 28px 16px; color: var(--muted); font-size: 13px;
+      background: var(--surface-2); border-radius: 14px; border: 1px dashed var(--border);
+    }
+
+    .canvas-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 680px) { .canvas-compare { grid-template-columns: 1fr; } }
+    .canvas-pane { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 10px; text-align: center; }
+    .canvas-pane span { display: block; font-size: 11px; font-weight: 800; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.04em; }
+    canvas { max-width: 100%; height: auto; border-radius: 8px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+    .log-box {
+      background: #020617; color: #e2e8f0; border: 1px solid var(--border); border-radius: 12px; padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11.5px; max-height: 380px; overflow-y: auto; line-height: 1.55;
+    }
+    .log-entry { border-bottom: 1px solid rgba(51, 65, 85, 0.35); padding: 4px 0; }
+    .log-ok { color: #34d399; }
+    .log-warn { color: #fbbf24; }
+    .log-err { color: #f87171; }
+    .log-info { color: #38bdf8; }
+
+    .bottom-nav-wrap {
+      position: fixed; bottom: calc(10px + var(--safe-bottom)); left: 12px; right: 12px; z-index: 50;
+      display: flex; justify-content: center; pointer-events: none;
+    }
+    .bottom-nav {
+      pointer-events: auto; width: 100%; max-width: 520px;
+      background: var(--surface); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border); border-radius: 22px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+      display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px;
+    }
+    .nav-btn {
+      background: none; border: none; color: var(--muted); font-size: 10px; font-weight: 700;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 7px 2px; border-radius: 16px; cursor: pointer; transition: 0.18s;
+    }
+    .nav-btn svg { width: 19px; height: 19px; }
+    .nav-btn.active {
+      color: #fff; background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35);
+    }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(2, 6, 23, 0.8);
+      backdrop-filter: blur(6px); z-index: 60;
+      display: none; align-items: center; justify-content: center; padding: 14px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface-solid); border: 1px solid var(--border);
+      border-radius: 20px; width: 100%; max-width: 680px; max-height: 86dvh;
+      display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow);
+    }
+    .modal-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+    .modal-body { padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .edit-item { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+    .edit-item small { display: block; color: var(--muted); font-size: 11px; margin-bottom: 6px; font-weight: 600; }
+    .edit-item textarea {
+      width: 100%; min-height: 70px; background: var(--bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 10px; padding: 9px;
+      font-family: inherit; font-size: 13px; line-height: 1.45; resize: vertical;
+    }
+    .modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+    .toast-container {
+      position: fixed; top: 68px; left: 50%; transform: translateX(-50%);
+      z-index: 70; display: flex; flex-direction: column; gap: 8px;
+      width: min(92vw, 380px); pointer-events: none;
+    }
+    .toast {
+      background: var(--surface-solid); color: var(--text);
+      border: 1px solid var(--primary); border-radius: 12px;
+      padding: 10px 14px; font-size: 12.5px; font-weight: 700;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.45); animation: fadeUp 0.2s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      </div>
+      <div>
+        <h1>TechBook AI</h1>
+        <span>PDF Tradutor &amp; Resumo</span>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="chip" id="wakeBadge"><span class="chip-dot"></span><span>Tela: Auto</span></div>
+      <div class="chip active" id="hwBadge">CPU</div>
+      <button class="icon-btn" id="themeToggle" title="Alternar Tema">☀️</button>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- TAB 1: TRADUZIR -->
+    <section id="tab-translate" class="tab-panel active">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Arquivo PDF &amp; Idiomas
+          </h2>
+        </div>
+
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="pdfInput" accept="application/pdf" />
+          <div class="dz-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          </div>
+          <div class="dz-main">Toque ou arraste seu PDF aqui</div>
+          <div class="dz-sub">Detecção automática de idioma • Traduz para qualquer língua preservando código</div>
+        </label>
+
+        <div class="file-card" id="fileCard">
+          <div class="file-meta">
+            <strong id="fileNameDisplay">livro.pdf</strong>
+            <span id="filePagesDisplay">0 páginas carregadas</span>
+          </div>
+          <div class="lang-pill">
+            <div id="detectedLangChip">Detectando...</div>
+            <div id="detectedConfDisplay" style="font-size:10px;opacity:0.85;"></div>
+          </div>
+        </div>
+
+        <div class="lang-bar">
+          <div class="field">
+            <label>Origem (PDF)</label>
+            <select id="sourceLang">
+              <option value="auto" selected>✨ Auto-Detectar</option>
+              <option value="en">🇺🇸 Inglês</option>
+              <option value="pt">🇧🇷 Português</option>
+              <option value="es">🇪🇸 Espanhol</option>
+              <option value="fr">🇫🇷 Francês</option>
+              <option value="de">🇩🇪 Alemão</option>
+              <option value="it">🇮🇹 Italiano</option>
+              <option value="ja">🇯🇵 Japonês</option>
+              <option value="zh">🇨🇳 Chinês</option>
+              <option value="ko">🇰🇷 Coreano</option>
+              <option value="ru">🇷🇺 Russo</option>
+              <option value="ar">🇸🇦 Árabe</option>
+            </select>
+          </div>
+
+          <button class="swap-btn" id="btnSwapLang" title="Inverter idiomas">⇄</button>
+
+          <div class="field">
+            <label>Traduzir Para</label>
+            <select id="targetLang">
+              <option value="pt" selected>🇧🇷 Português (BR)</option>
+              <option value="en">🇺🇸 Inglês</option>
+              <option value="es">🇪🇸 Espanhol</option>
+              <option value="fr">🇫🇷 Francês</option>
+              <option value="de">🇩🇪 Alemão</option>
+              <option value="it">🇮🇹 Italiano</option>
+              <option value="ja">🇯🇵 Japonês</option>
+              <option value="zh-CN">🇨🇳 Chinês</option>
+              <option value="ko">🇰🇷 Coreano</option>
+              <option value="ru">🇷🇺 Russo</option>
+              <option value="ar">🇸🇦 Árabe</option>
+              <option value="hi">🇮🇳 Hindi</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="toggle-row">
+          <div>
+            <span>Blindar Código &amp; Termos Técnicos</span>
+            <small>Mantém sintaxe (Go, Python, C#, SQL, terminal) intacta em inglês</small>
+          </div>
+          <div class="switch">
+            <input type="checkbox" id="preserveCodeToggle" checked />
+            <span class="slider"></span>
+          </div>
+        </label>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg>
+            Motor de Tradução
+          </h2>
+        </div>
+
+        <div class="engine-grid">
+          <div class="engine-card selected" data-engine="hybrid" id="optHybrid">
+            <h3>Híbrido Multi-Língua <span class="badge badge-cloud">Global</span></h3>
+            <p>Qualquer par de idiomas com cascata em 4 servidores (Google GTX, Clients5, MyMemory, Lingva) + anti-429.</p>
+          </div>
+          <div class="engine-card" data-engine="local" id="optLocal">
+            <h3>CPU Neural Local <span class="badge badge-local">Offline</span></h3>
+            <p>Processa direto no chip do celular via ONNX (EN → PT/ES/FR/IT), sem depender de limites da internet.</p>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:12px;font-weight:700;" id="modelStatusTitle">IA Neural Local: Não carregada</div>
+            <div style="font-size:11px;color:var(--muted);" id="modelStatusSub">Opcional • Recomendado usar sob HTTPS para cache permanente</div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btnPreloadModel">Ativar IA Local</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Execução &amp; Progresso
+          </h2>
+          <div class="row" style="gap:6px;">
+            <button class="btn btn-sm" id="btnPreset15">Teste 15 págs</button>
+            <button class="btn btn-sm" id="btnPresetAll">Livro Todo</button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:14px;">
+          <div class="field">
+            <label>Início</label>
+            <input type="number" id="startPage" value="1" min="1" />
+          </div>
+          <div class="field">
+            <label>Fim</label>
+            <input type="number" id="endPage" value="1" min="1" />
+          </div>
+          <div class="field">
+            <label>Velocidade</label>
+            <select id="workerCount">
+              <option value="2">2 Workers (Eco)</option>
+              <option value="4" selected>4 Workers (Turbo)</option>
+              <option value="6">6 Workers (Máx)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box"><div class="stat-val" id="statDone">0</div><div class="stat-lbl">Páginas OK</div></div>
+          <div class="stat-box"><div class="stat-val" id="statPending" style="color:var(--warn);">0</div><div class="stat-lbl">Pendentes</div></div>
+          <div class="stat-box"><div class="stat-val" id="statSpeed">0.0</div><div class="stat-lbl">Págs / min</div></div>
+          <div class="stat-box"><div class="stat-val" id="statEta">--</div><div class="stat-lbl">Restante</div></div>
+        </div>
+
+        <div class="progress-wrap"><div class="progress-bar" id="mainProgressBar"></div></div>
+        <div class="status-line" style="margin-bottom:14px;">
+          <span id="statusText">Aguardando PDF...</span>
+          <span id="percentText">0%</span>
+        </div>
+
+        <div class="row">
+          <button class="btn btn-primary" id="btnStart" disabled style="flex:2;">Iniciar Tradução</button>
+          <button class="btn btn-danger" id="btnPause" disabled style="flex:1;">Pausar</button>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn btn-warn" id="btnRetryPending" disabled style="flex:1;">Retraduzir Pendentes (0)</button>
+          <button class="btn btn-success" id="btnDownloadPdf" disabled style="flex:1;">Baixar PDF Final</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: RESUMIR LIVRO -->
+    <section id="tab-summary" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            Resumo Inteligente por Capítulo
+          </h2>
+        </div>
+
+        <div class="row" style="margin-bottom:12px;">
+          <div class="field">
+            <label>Escopo</label>
+            <select id="summaryScope">
+              <option value="all" selected>Livro Completo</option>
+              <option value="range">Intervalo (Início → Fim)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Profundidade</label>
+            <select id="summaryDepth">
+              <option value="short">Executivo (Curto)</option>
+              <option value="medium" selected>Estudo Médio</option>
+              <option value="detailed">Guia Detalhado</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:12px;">
+          <button class="btn btn-purple" id="btnGenerateSummary" disabled style="flex:2;">Gerar Resumo no Idioma Destino</button>
+          <button class="btn" id="btnCopySummary" disabled style="flex:1;">Copiar</button>
+          <button class="btn btn-success" id="btnDownloadSummary" disabled style="flex:1;">Salvar .MD</button>
+        </div>
+
+        <div class="progress-wrap" id="summaryProgressWrap" style="display:none;">
+          <div class="progress-bar" id="summaryProgressBar"></div>
+        </div>
+        <div id="summaryStatus" style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;"></div>
+
+        <div class="summary-list" id="summaryCardsContainer">
+          <div class="empty-state">
+            Carregue qualquer PDF na aba <strong>Traduzir</strong> e toque em <strong>Gerar Resumo</strong> para ver os tópicos estruturados por capítulo no idioma escolhido.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: LEITOR VISUAL -->
+    <section id="tab-preview" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <div class="row" style="gap:6px;">
+            <button class="btn btn-sm" id="btnPrevPage">◀</button>
+            <input type="number" id="previewPageInput" value="1" min="1" style="width:68px;height:34px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:9px;text-align:center;font-weight:700;" />
+            <button class="btn btn-sm" id="btnNextPage">▶</button>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btnEditPage" disabled>✏️ Editar Textos da Página</button>
+        </div>
+
+        <div class="canvas-compare">
+          <div class="canvas-pane">
+            <span>ORIGINAL</span>
+            <canvas id="canvasOrig"></canvas>
+          </div>
+          <div class="canvas-pane">
+            <span>TRADUZIDO</span>
+            <canvas id="canvasTrans"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: LOGS -->
+    <section id="tab-logs" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            Console de Diagnóstico
+          </h2>
+          <button class="btn btn-sm" id="btnClearLogs">Limpar</button>
+        </div>
+        <div class="log-box" id="logBox"></div>
+      </div>
+    </section>
+
+    <!-- TAB 5: INSTALAR APP -->
+    <section id="tab-install" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            Instalar no Celular como App Nativo
+          </h2>
+        </div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-top:0;">
+          Para o Android instalar o aplicativo na tela inicial (sem barra do navegador, com Wake Lock nativo e cache permanente da IA):
+        </p>
+        <ol style="font-size:12.5px;color:var(--text);line-height:1.7;padding-left:18px;margin-bottom:14px;">
+          <li>Coloque o arquivo <code>index.html</code> dentro de uma pasta nova (ex: <code>meuapp</code>).</li>
+          <li>Acesse <strong>app.netlify.com/drop</strong> (grátis) e envie a pasta <code>meuapp</code>.</li>
+          <li>Abra o link <code>https://...netlify.app</code> no Chrome do celular e toque em <strong>⋮ → Instalar aplicativo</strong>.</li>
+        </ol>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Floating Bottom Nav -->
+  <div class="bottom-nav-wrap">
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="tab-translate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+        <span>Traduzir</span>
+      </button>
+      <button class="nav-btn" data-tab="tab-summary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span>Resumir</span>
+      </button>
+      <button class="nav-btn" data-tab="tab-preview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Ler PDF</span>
+      </button>
+      <button class="nav-btn" data-tab="tab-logs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span>Logs</span>
+      </button>
+      <button class="nav-btn" data-tab="tab-install">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>App</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Visual Page Editor Modal -->
+  <div class="modal-backdrop" id="editModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="editModalTitle">Editar Página</span>
+        <button class="btn btn-sm" id="btnCloseModal">✕</button>
+      </div>
+      <div class="modal-body" id="editModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" id="btnCancelModal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btnSaveModal">Salvar Alterações</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const IS_OPAQUE = ['content:', 'file:'].includes(window.location.protocol) || window.origin === 'null';
+    document.getElementById('hwBadge').textContent = `${navigator.hardwareConcurrency || 4} Cores`;
+
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.getElementById('themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+
+    if ('serviceWorker' in navigator && !IS_OPAQUE) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {});
+      });
+    }
+
+    let wakeLockSentinel = null;
+    let noSleepVideo = null;
+
+    async function enableKeepAwake() {
+      const badge = document.getElementById('wakeBadge');
+      try {
+        if ('wakeLock' in navigator && !IS_OPAQUE) {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+          badge.classList.add('active');
+          badge.lastElementChild.textContent = 'Tela: Ativa';
+          return;
+        }
+      } catch (_) {}
+
+      try {
+        if (!noSleepVideo) {
+          noSleepVideo = document.createElement('video');
+          noSleepVideo.setAttribute('playsinline', '');
+          noSleepVideo.setAttribute('muted', '');
+          noSleepVideo.loop = true;
+          noSleepVideo.muted = true;
+          noSleepVideo.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;';
+          noSleepVideo.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE0OCByMjc5NSBhYWE5YWE4IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlyaWdodCAyMDAzLTIwMTcgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0xIHJlZj0zIGRlYmxvY2s9MTowOjAgYW5hbHlzZT0weDM6MHgxMTMgbWU9aGV4IHN1Ym1lPTcgcHN5PTEgcHN5X3JkPTEuMDA6MC4wMCBtaXhlZF9yZWY9MSBtZV9yYW5nZT0xNiBjaHJvbWFfbWU9MSB0cmVsbGlzPTEgOHg4ZGN0PTEgY3FtPTAgZGVhZHpvbmU9MjEsMTEgZmFzdF9wc2tpcD0xIGNocm9tYV9xcF9vZmZzZXQ9LTIgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MyBiX3B5cmFtaWQ9MiBiX2FkYXB0PTEgYl9iaWFzPTAgZGlyZWN0PTEgd2VpZ2h0Yj0xIG9wZW5fZ29wPTAgd2VpZ2h0cD0yIGtleWludD0yNTAga2V5aW50X21pbj0yNSBzY2VuZWN1dD00MCBpbnRyYV9yZWZyZXNoPTAgcmNfbG9va2FoZWFkPTQwIHJjPWNyZiBtYnRyZWU9MSBjcmY9MjMuMCBxY29tcD0wLjYwIHFwbWluPTEwIHFwbWF4PTY5IHFwc3RlcD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjAwAIAAAAADZ2WIhAA7//728P4FNjuZlkJ52+0788uX4AAAAA==';
+          document.body.appendChild(noSleepVideo);
+        }
+        await noSleepVideo.play();
+        badge.classList.add('active');
+        badge.lastElementChild.textContent = 'Tela: NoSleep';
+      } catch (_) {}
+    }
+
+    async function disableKeepAwake() {
+      const badge = document.getElementById('wakeBadge');
+      if (wakeLockSentinel) { try { await wakeLockSentinel.release(); } catch (_) {} wakeLockSentinel = null; }
+      if (noSleepVideo) { try { noSleepVideo.pause(); } catch (_) {} }
+      badge.classList.remove('active');
+      badge.lastElementChild.textContent = 'Tela: Auto';
+    }
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const LANG_PROFILES = {
+      en: { name: '🇺🇸 Inglês', words: ['the','and','that','have','for','not','with','you','this','from','which','will','can','into','your','using'] },
+      pt: { name: '🇧🇷 Português', words: ['que','não','para','com','uma','por','mais','como','mas','dos','das','pelo','pela','isso','você','entre'] },
+      es: { name: '🇪🇸 Espanhol', words: ['que','los','las','por','para','con','una','como','más','pero','sus','sobre','este','entre','desde','también'] },
+      fr: { name: '🇫🇷 Francês', words: ['les','des','est','que','dans','pour','pas','sur','plus','avec','vous','une','sont','cette','mais','nous'] },
+      de: { name: '🇩🇪 Alemão', words: ['der','die','und','den','das','von','ist','mit','sich','auf','für','nicht','eine','als','auch','werden'] },
+      it: { name: '🇮🇹 Italiano', words: ['che','non','per','con','una','sono','della','anche','come','più','questo','degli','nella','suo','tra'] }
+    };
+
+    function detectLanguageFromText(sample) {
+      const clean = (sample || '').slice(0, 8000);
+      if (!clean.trim()) return { code: 'en', name: '🇺🇸 Inglês (Padrão)', confidence: 50 };
+      if (/[\u3040-\u30ff]/.test(clean)) return { code: 'ja', name: '🇯🇵 Japonês', confidence: 98 };
+      if (/[\u4e00-\u9fff]/.test(clean)) return { code: 'zh', name: '🇨🇳 Chinês', confidence: 97 };
+      if (/[\uac00-\ud7af]/.test(clean)) return { code: 'ko', name: '🇰🇷 Coreano', confidence: 98 };
+      if (/[\u0400-\u04ff]/.test(clean)) return { code: 'ru', name: '🇷🇺 Russo', confidence: 98 };
+      if (/[\u0600-\u06ff]/.test(clean)) return { code: 'ar', name: '🇸🇦 Árabe', confidence: 98 };
+
+      const tokens = clean.toLowerCase().match(/[a-záéíóúâêîôûãõàèìòùäëïöüçñß]+/g) || [];
+      if (tokens.length < 15) return { code: 'en', name: '🇺🇸 Inglês', confidence: 60 };
+
+      let best = 'en', bestScore = -1, total = 0;
+      for (const [code, prof] of Object.entries(LANG_PROFILES)) {
+        const set = new Set(prof.words);
+        let hits = 0;
+        for (const t of tokens) if (set.has(t)) hits++;
+        total += hits;
+        if (hits > bestScore) { bestScore = hits; best = code; }
+      }
+      const conf = total > 0 ? Math.min(99, Math.max(64, Math.round((bestScore / total) * 100 + 25))) : 60;
+      return { code: best, name: LANG_PROFILES[best].name, confidence: conf };
+    }
+
+    const TECH_CS = ["Go","Golang","GOROOT","GOPATH","ELF","PE","RAT","C2","TCP","UDP","IP","DNS","FQDN","CNAME","SMB","NTLM","Kerberos","ASN.1","HMAC","XOR","RC2","MD5","SHA-256","DLL","LSASS","PsExec","OPSEC","ASCII","Base64","HTTP","HTTPS","TLS","RPC","gRPC","JSON","XML","HTML","DOM","URL","API","APIs","REST","SQL","NoSQL","Docker","Shodan","Metasploit","Meterpreter"];
+    const TECH_CI = ["goroutine","goroutines","channel","channels","slice","slices","struct","structs","interface","interfaces","pointer","pointers","defer","panic","marshal","unmarshal","middleware","router","routing","template","payload","payloads","exploit","exploits","shellcode","fuzzer","fuzzing","pentester","pentesting","keylogger","handshake","firewall","proxy","proxies","socket","sockets","listener","beacon","implant","ciphertext","cleartext","plaintext","brute-force","wordlist","regex","parser","endpoint","endpoints","framework","package","query","request","response","script"];
+    const escRx = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const RX_CS = new RegExp(`(?<!\\w)(${TECH_CS.sort((a,b)=>b.length-a.length).map(escRx).join('|')})(?!\\w)`, 'g');
+    const RX_CI = new RegExp(`(?<!\\w)(${TECH_CI.sort((a,b)=>b.length-a.length).map(escRx).join('|')})(?!\\w)`, 'gi');
+    const RX_INLINE = /([a-zA-Z_][\w]*\.[a-zA-Z_][\w()]*|\b[a-zA-Z_][\w]*\(\)|`[^`]+`|\/[\w\-./]+(?:\.go|\.xml|\.txt|\.js|\.exe)?)/g;
+
+    function protectTerms(text, enabled) {
+      if (!enabled) return { protectedText: text, tokens: [] };
+      const tokens = [];
+      const add = m => { const id = `ZXQ${tokens.length}QXZ`; tokens.push({ id, val: m }); return id; };
+      return { protectedText: text.replace(RX_INLINE, add).replace(RX_CS, add).replace(RX_CI, add), tokens };
+    }
+    function restoreTerms(text, tokens) {
+      let out = text;
+      for (let i = tokens.length - 1; i >= 0; i--) out = out.replace(new RegExp(escRx(tokens[i].id), 'gi'), tokens[i].val);
+      return out.replace(/\s+([,.;:!?])/g, '$1');
+    }
+
+    let localPipe = null, localReady = false, googleCooldownUntil = 0, selectedEngine = 'hybrid';
+
+    async function loadLocalModel() {
+      const btn = document.getElementById('btnPreloadModel');
+      const title = document.getElementById('modelStatusTitle');
+      const sub = document.getElementById('modelStatusSub');
+      btn.disabled = true; btn.textContent = 'Carregando...';
+      addLog('Carregando IA neural local (Xenova/opus-mt-en-ROMANCE)...', 'info');
+      try {
+        const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+        env.allowLocalModels = false;
+        env.useBrowserCache = !IS_OPAQUE;
+        if (env.backends?.onnx?.wasm) {
+          env.backends.onnx.wasm.numThreads = IS_OPAQUE ? 1 : Math.min(navigator.hardwareConcurrency || 4, 4);
+          env.backends.onnx.wasm.proxy = false;
+        }
+        localPipe = await pipeline('translation', 'Xenova/opus-mt-en-ROMANCE', { quantized: true });
+        localReady = true;
+        title.textContent = 'IA Local Ativa na CPU ✓';
+        title.style.color = 'var(--accent)';
+        sub.textContent = 'Pronta para tradução offline EN → PT/ES/FR/IT';
+        btn.textContent = 'Ativa ✓';
+        showToast('IA Local ativada na CPU!');
+        addLog('IA Local pronta na CPU.', 'ok');
+      } catch (e) {
+        title.textContent = 'IA Local indisponível (4 Nuvens ativas)';
+        title.style.color = 'var(--warn)';
+        sub.textContent = e.message;
+        btn.disabled = false; btn.textContent = 'Tentar Novamente';
+        addLog('Aviso IA Local: ' + e.message, 'warn');
+      }
+    }
+
+    async function fetchTimeout(url, opts = {}, ms = 9500) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), ms);
+      try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
+      finally { clearTimeout(t); }
+    }
+
+    async function trGoogleGTX(text, sl, tl) {
+      if (Date.now() < googleCooldownUntil) throw new Error('cooldown');
+      const res = await fetchTimeout('https://translate.googleapis.com/translate_a/single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: new URLSearchParams({ client: 'gtx', sl: sl || 'auto', tl, dt: 't', q: text }).toString()
+      });
+      if (res.status === 429) { googleCooldownUntil = Date.now() + 45000; throw new Error('429'); }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      return data[0].map(s => s[0] || '').join('');
+    }
+
+    async function trClients5(text, sl, tl) {
+      if (Date.now() < googleCooldownUntil) throw new Error('cooldown');
+      const res = await fetchTimeout(`https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=${encodeURIComponent(sl || 'auto')}&tl=${encodeURIComponent(tl)}&q=${encodeURIComponent(text)}`);
+      if (res.status === 429) { googleCooldownUntil = Date.now() + 45000; throw new Error('429'); }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      return Array.isArray(data) ? (typeof data[0] === 'string' ? data[0] : data[0][0]) : '';
+    }
+
+    async function trMyMemory(text, sl, tl) {
+      const src = (!sl || sl === 'auto') ? (detectedLangCode || 'en') : sl;
+      const sentences = text.match(/[^.!?]+[.!?]*\s*/g) || [text];
+      const parts = []; let buf = '';
+      for (const s of sentences) {
+        if ((buf + s).length > 430 && buf) { parts.push(buf.trim()); buf = s; } else buf += s;
+      }
+      if (buf.trim()) parts.push(buf.trim());
+      const out = [];
+      for (const p of parts) {
+        const res = await fetchTimeout(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(p)}&langpair=${encodeURIComponent(src)}|${encodeURIComponent(tl)}`);
+        if (!res.ok) throw new Error('MM ' + res.status);
+        const data = await res.json();
+        if (data?.responseStatus === 429 || !data?.responseData?.translatedText) throw new Error('MM fail');
+        out.push(data.responseData.translatedText);
+      }
+      return out.join(' ');
+    }
+
+    async function trLingva(text, sl, tl) {
+      const src = (!sl || sl === 'auto') ? (detectedLangCode || 'en') : sl;
+      const res = await fetchTimeout(`https://lingva.ml/api/v1/${encodeURIComponent(src)}/${encodeURIComponent(tl.split('-')[0])}/${encodeURIComponent(text)}`);
+      if (!res.ok) throw new Error('Lingva ' + res.status);
+      const data = await res.json();
+      if (!data?.translation) throw new Error('Empty');
+      return data.translation;
+    }
+
+    async function translateUniversal(rawText, sl, tl, isRetry = false) {
+      const preserve = document.getElementById('preserveCodeToggle').checked;
+      const { protectedText, tokens } = protectTerms(rawText, preserve);
+      let translated = null;
+
+      const srcActual = (!sl || sl === 'auto') ? detectedLangCode : sl;
+      const romanceMap = { pt: '>>pt_br<< ', es: '>>es<< ', fr: '>>fr<< ', it: '>>it<< ' };
+      if ((selectedEngine === 'local' || localReady) && localReady && srcActual === 'en' && romanceMap[tl.split('-')[0]]) {
+        try {
+          const res = await localPipe(romanceMap[tl.split('-')[0]] + protectedText, { max_new_tokens: 256 });
+          translated = res?.[0]?.translation_text?.replace(/^>>\w+<<\s*/i, '').trim();
+        } catch (_) {}
+      }
+
+      if (!translated) {
+        const chain = isRetry ? [trMyMemory, trLingva, trGoogleGTX, trClients5] : [trGoogleGTX, trClients5, trMyMemory, trLingva];
+        for (const fn of chain) {
+          try {
+            translated = await fn(protectedText, sl, tl);
+            if (translated && translated.trim()) break;
+          } catch (err) {
+            if (String(err.message).includes('Failed to fetch')) googleCooldownUntil = Date.now() + 45000;
+          }
+        }
+      }
+      if (!translated) throw new Error('Falha nos motores');
+      return restoreTerms(translated, tokens);
+    }
+
+    const CODE_RX = /^(\$\s+|msf\s*>|>\s+set\s+|\[[\+\-\*]\]|package\s+\w+|import\s*\(|func\s+|type\s+\w+\s+(struct|interface)|var\s+\(|const\s+\(|for\s+.*\{|if\s+.*\{|switch\s+.*\{|case\s+.*:|default:|return\b|defer\s+|go\s+\w+\(|\/\/|\/\*|\*\/|#include|<\?xml|<form|<input|<script)/;
+    const MONO_RX = /(mono|courier|consolas|fira|jetbrains|menlo|monaco|code|prestige)/i;
+    const BOLD_RX = /(bold|black|heavy|condensedbold)/i;
+
+    function extractBlocks(textContent, viewport) {
+      const styles = textContent.styles || {};
+      const items = textContent.items.filter(it => it.str && it.str.trim()).map(it => {
+        const tx = pdfjsLib.Util.transform(viewport.transform, it.transform);
+        const fontSize = Math.hypot(tx[0], tx[1]) || 10;
+        const ff = (styles[it.fontName]?.fontFamily || it.fontName || '');
+        return {
+          str: it.str, x: tx[4], yTop: tx[5] - fontSize, yBottom: tx[5],
+          width: it.width * viewport.scale, fontSize,
+          isMono: MONO_RX.test(ff) || MONO_RX.test(it.fontName),
+          isBold: BOLD_RX.test(ff) || BOLD_RX.test(it.fontName)
+        };
+      });
+      if (!items.length) return [];
+      items.sort((a, b) => Math.abs(a.yTop - b.yTop) > 3.5 ? a.yTop - b.yTop : a.x - b.x);
+
+      const lines = [];
+      for (const it of items) {
+        const last = lines[lines.length - 1];
+        if (last && Math.abs(it.yTop - last.yTop) <= Math.max(3.5, it.fontSize * 0.35)) {
+          last.items.push(it);
+          last.yTop = Math.min(last.yTop, it.yTop);
+          last.yBottom = Math.max(last.yBottom, it.yBottom);
+        } else lines.push({ items: [it], yTop: it.yTop, yBottom: it.yBottom });
+      }
+
+      const sizes = items.map(i => i.fontSize).sort((a, b) => a - b);
+      const medianSize = sizes[Math.floor(sizes.length / 2)] || 10;
+      const preserveCode = document.getElementById('preserveCodeToggle').checked;
+
+      const pLines = lines.map(line => {
+        line.items.sort((a, b) => a.x - b.x);
+        let text = '', mono = 0, bold = 0, tot = 0, maxF = 0;
+        for (let i = 0; i < line.items.length; i++) {
+          const it = line.items[i];
+          if (i > 0 && (it.x - (line.items[i - 1].x + line.items[i - 1].width) > it.fontSize * 0.22)) text += ' ';
+          text += it.str;
+          const l = it.str.trim().length; tot += l;
+          if (it.isMono) mono += l;
+          if (it.isBold) bold += l;
+          if (it.fontSize > maxF) maxF = it.fontSize;
+        }
+        const clean = text.trim();
+        const isHdr = (line.yTop < viewport.height * 0.07 || line.yBottom > viewport.height * 0.94) && clean.length < 55;
+        const isNum = /^\d{1,3}$/.test(clean);
+        const isCode = preserveCode && ((tot > 0 && mono / tot >= 0.65) || CODE_RX.test(clean));
+        const isH = !isCode && !isHdr && !isNum && (maxF >= medianSize * 1.15 || (tot > 0 && bold / tot >= 0.75 && clean.length < 95));
+        return {
+          text: clean, xMin: line.items[0].x,
+          xMax: line.items[line.items.length - 1].x + line.items[line.items.length - 1].width,
+          yTop: line.yTop, yBottom: line.yBottom, fontSize: maxF,
+          isCode, isH, skip: isHdr || isNum || clean.length < 3
+        };
+      });
+
+      const blocks = []; let cur = null;
+      for (const ln of pLines) {
+        if (ln.skip) { if (cur) { blocks.push(cur); cur = null; } continue; }
+        const kind = ln.isCode ? 'CODE' : (ln.isH ? 'HEADING' : 'BODY');
+        if (!cur || cur.kind !== kind) {
+          if (cur) blocks.push(cur);
+          cur = { kind, lines: [ln], xMin: ln.xMin, xMax: ln.xMax, yTop: ln.yTop, yBottom: ln.yBottom, fontSize: ln.fontSize };
+          continue;
+        }
+        const prev = cur.lines[cur.lines.length - 1];
+        const gap = ln.yTop - prev.yBottom;
+        const lh = Math.max(prev.yBottom - prev.yTop, 10);
+        if (kind !== 'CODE' && (gap > lh * 0.58 || (ln.xMin - cur.xMin > 8.5 && /[.!?:”"]$/.test(prev.text)))) {
+          blocks.push(cur);
+          cur = { kind, lines: [ln], xMin: ln.xMin, xMax: ln.xMax, yTop: ln.yTop, yBottom: ln.yBottom, fontSize: ln.fontSize };
+        } else {
+          cur.lines.push(ln);
+          cur.xMin = Math.min(cur.xMin, ln.xMin); cur.xMax = Math.max(cur.xMax, ln.xMax);
+          cur.yTop = Math.min(cur.yTop, ln.yTop); cur.yBottom = Math.max(cur.yBottom, ln.yBottom);
+        }
+      }
+      if (cur) blocks.push(cur);
+
+      return blocks.map((b, idx) => {
+        let joined = '';
+        for (let i = 0; i < b.lines.length; i++) {
+          const p = b.lines[i].text;
+          if (i === 0) joined = p;
+          else if (/[a-z]-$/.test(joined) && /^[a-z]/.test(p)) joined = joined.slice(0, -1) + p;
+          else joined += ' ' + p;
+        }
+        return {
+          id: idx, kind: b.kind, originalText: joined.replace(/\s+/g, ' ').trim(),
+          translatedText: null, status: b.kind === 'CODE' ? 'code' : 'pending',
+          box: { xMin: b.xMin, xMax: b.xMax, yTop: b.yTop, yBottom: b.yBottom }, fontSize: b.fontSize
+        };
+      });
+    }
+
+    function sanitizeWinAnsi(str) {
+      return (str || '').replace(/ﬁ/g, 'fi').replace(/ﬂ/g, 'fl')
+        .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2013\u2014]/g, '-').replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, ' ');
+    }
+
+    function wrapLines(text, font, size, maxW) {
+      const words = sanitizeWinAnsi(text).split(/\s+/);
+      const out = []; let line = '';
+      for (const w of words) {
+        const test = line ? `${line} ${w}` : w;
+        if (font.widthOfTextAtSize(test, size) <= maxW) line = test;
+        else { if (line) out.push(line); line = w; }
+      }
+      if (line) out.push(line);
+      return out;
+    }
+
+    async function drawBlocksOnPdfPage(pdfDoc, pageIdx, blocks) {
+      const page = pdfDoc.getPage(pageIdx);
+      const { width: pageW, height: pageH } = page.getSize();
+      const fontReg = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+      const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRomanBold);
+      const codeBoxes = blocks.filter(b => b.kind === 'CODE').map(b => b.box);
+
+      for (const b of blocks) {
+        if (b.kind === 'CODE' || !b.translatedText) continue;
+        let left = Math.max(12, b.box.xMin - 2);
+        let right = Math.min(pageW - 12, Math.max(b.box.xMax + 2, pageW * 0.87));
+        let top = Math.max(10, b.box.yTop - 1.5);
+        let bottom = Math.min(pageH - 10, b.box.yBottom + 1.5);
+
+        for (const cb of codeBoxes) {
+          if (left < cb.xMax && right > cb.xMin && cb.yTop >= b.box.yBottom - 2 && bottom > cb.yTop - 2) {
+            bottom = Math.max(top + 8, cb.yTop - 2);
+          }
+        }
+
+        const boxW = Math.max(40, right - left), boxH = Math.max(10, bottom - top), pdfY = pageH - bottom;
+        page.drawRectangle({ x: left, y: pdfY, width: boxW, height: boxH, color: PDFLib.rgb(1, 1, 1), opacity: 1 });
+
+        const isH = b.kind === 'HEADING';
+        const font = isH ? fontBold : fontReg;
+        let size = isH ? Math.min(13, Math.max(10.5, b.fontSize * 0.95)) : 9.4;
+        const minSize = isH ? 8.5 : 6.6;
+        let lines = [], lh = size * 1.16;
+        while (size >= minSize) {
+          lh = size * 1.15;
+          lines = wrapLines(b.translatedText, font, size, boxW - 3);
+          if (lines.length * lh <= boxH + 1.5) break;
+          size -= 0.4;
+        }
+        let y = pageH - top - size * 0.92;
+        for (const ln of lines) {
+          if (y < pdfY - 1) break;
+          try { page.drawText(ln, { x: left + 1.5, y, size, font, color: PDFLib.rgb(0.06, 0.08, 0.12) }); } catch (_) {}
+          y -= lh;
+        }
+      }
+    }
+
+    function extractTopSentences(text, maxSents = 4) {
+      const clean = text.replace(/\s+/g, ' ').trim();
+      const sents = (clean.match(/[^.!?]+[.!?]+/g) || [clean])
+        .map(s => s.trim()).filter(s => s.length >= 45 && s.length <= 360 && !CODE_RX.test(s));
+      if (sents.length <= maxSents) return sents;
+
+      const freq = {};
+      const stop = new Set(['the','and','that','this','with','from','have','will','your','into','which','for','are','was','were','been','has','had','not','but','what','all','when','can','each','there','use','how','their','they','about','many','then','them','these','some','would','make','like','time','look','more','write','see','way','could','than','first','call','who','its','now','find','que','para','com','uma','por','mais','como','mas','dos','das','pelo','pela','isso','você','entre']);
+      for (const s of sents) {
+        for (const w of (s.toLowerCase().match(/[a-záéíóúâêîôûãõçñ]{4,}/g) || [])) {
+          if (!stop.has(w)) freq[w] = (freq[w] || 0) + 1;
+        }
+      }
+      const scored = sents.map((s, idx) => {
+        const ws = s.toLowerCase().match(/[a-záéíóúâêîôûãõçñ]{4,}/g) || [];
+        let sc = ws.reduce((acc, w) => acc + (freq[w] || 0), 0);
+        sc = ws.length ? sc / Math.sqrt(ws.length) : 0;
+        if (idx < 3) sc *= 1.25;
+        return { s, idx, sc };
+      });
+      return scored.sort((a, b) => b.sc - a.sc).slice(0, maxSents).sort((a, b) => a.idx - b.idx).map(x => x.s);
+    }
+
+    async function generateBookSummary() {
+      if (!pdfJsDoc) return;
+      const btn = document.getElementById('btnGenerateSummary');
+      const container = document.getElementById('summaryCardsContainer');
+      const pWrap = document.getElementById('summaryProgressWrap');
+      const pBar = document.getElementById('summaryProgressBar');
+      const st = document.getElementById('summaryStatus');
+
+      btn.disabled = true; pWrap.style.display = 'block'; pBar.style.width = '5%';
+      container.innerHTML = '';
+      await enableKeepAwake();
+
+      try {
+        const scope = document.getElementById('summaryScope').value;
+        const depth = document.getElementById('summaryDepth').value;
+        const total = pdfJsDoc.numPages;
+        const pStart = scope === 'range' ? Math.max(1, parseInt(document.getElementById('startPage').value, 10) || 1) : 1;
+        const pEnd = scope === 'range' ? Math.min(total, parseInt(document.getElementById('endPage').value, 10) || total) : total;
+
+        const chapters = [];
+        let curChap = { title: `Visão Geral (Págs. ${pStart}–${pEnd})`, text: '' };
+        const chapRx = /^(chapter\s+\d+|cap[íi]tulo\s+\d+|\d+\s+[A-ZÁÉÍÓÚ][A-Z\s,:-]{4,})$/i;
+
+        for (let p = pStart; p <= pEnd; p++) {
+          const page = await pdfJsDoc.getPage(p);
+          const tc = await page.getTextContent();
+          const lines = tc.items.map(i => i.str.trim()).filter(Boolean);
+          const match = lines.slice(0, 5).find(l => chapRx.test(l) && l.length < 70);
+          if (match && p > pStart + 10 && curChap.text.length > 400) {
+            chapters.push(curChap);
+            curChap = { title: `${match} (Pág. ${p})`, text: '' };
+          }
+          curChap.text += ' ' + lines.filter(l => !CODE_RX.test(l) && l.length > 20).join(' ');
+          if (p % 10 === 0 || p === pEnd) {
+            pBar.style.width = Math.round(((p - pStart + 1) / (pEnd - pStart + 1)) * 50) + '%';
+            st.textContent = `Analisando página ${p}/${pEnd}...`;
+          }
+        }
+        if (curChap.text.trim()) chapters.push(curChap);
+
+        const maxSents = depth === 'short' ? 2 : (depth === 'medium' ? 4 : 7);
+        const sl = document.getElementById('sourceLang').value;
+        const tl = document.getElementById('targetLang').value;
+        let md = `# Resumo: ${currentFileName}\nIdioma original: ${detectedLangName} | Páginas: ${pStart}–${pEnd}\n\n`;
+
+        for (let i = 0; i < chapters.length; i++) {
+          const ch = chapters[i];
+          const top = extractTopSentences(ch.text, maxSents);
+          if (!top.length) continue;
+
+          st.textContent = `Traduzindo seção ${i + 1} de ${chapters.length}...`;
+          pBar.style.width = (50 + Math.round(((i + 1) / chapters.length) * 50)) + '%';
+
+          let titleTr = ch.title;
+          try { titleTr = await translateUniversal(ch.title, sl, tl, false); } catch (_) {}
+
+          const card = document.createElement('div');
+          card.className = 'chap-card';
+          const h4 = document.createElement('h4');
+          h4.textContent = titleTr;
+          const ul = document.createElement('ul');
+          card.appendChild(h4); card.appendChild(ul);
+          container.appendChild(card);
+
+          md += `## ${titleTr}\n`;
+          for (const s of top) {
+            let sTr = s;
+            try { sTr = await translateUniversal(s, sl, tl, false); } catch (_) {}
+            const li = document.createElement('li');
+            li.textContent = sTr;
+            ul.appendChild(li);
+            md += `- ${sTr}\n`;
+          }
+          md += '\n';
+        }
+
+        lastGeneratedSummary = md;
+        document.getElementById('btnCopySummary').disabled = false;
+        document.getElementById('btnDownloadSummary').disabled = false;
+        st.textContent = 'Resumo concluído!';
+        showToast('Resumo gerado com sucesso!');
+        addLog('Resumo do livro concluído.', 'ok');
+      } catch (e) {
+        st.textContent = 'Erro: ' + e.message;
+        addLog('Erro no resumo: ' + e.message, 'err');
+      } finally {
+        btn.disabled = false;
+        await disableKeepAwake();
+      }
+    }
+
+    let originalPdfBytes = null, pdfJsDoc = null, currentFileName = 'documento.pdf';
+    let detectedLangCode = 'en', detectedLangName = '🇺🇸 Inglês', lastGeneratedSummary = '';
+    let pageBlocksMap = new Map(), pageStatusMap = new Map(), isRunning = false, shouldPause = false;
+
+    function addLog(msg, type = 'info') {
+      const box = document.getElementById('logBox');
+      const div = document.createElement('div');
+      div.className = `log-entry log-${type}`;
+      div.textContent = `[${new Date().toLocaleTimeString('pt-BR')}] ${msg}`;
+      box.appendChild(div); box.scrollTop = box.scrollHeight;
+    }
+
+    function updateStats() {
+      let done = 0, pending = 0;
+      for (const st of pageStatusMap.values()) if (st === 'done' || st === 'empty') done++;
+      for (const blocks of pageBlocksMap.values()) {
+        for (const b of blocks) if (b.kind !== 'CODE' && b.status !== 'done') pending++;
+      }
+      document.getElementById('statDone').textContent = done;
+      document.getElementById('statPending').textContent = pending;
+      const retry = document.getElementById('btnRetryPending');
+      retry.textContent = `Retraduzir Pendentes (${pending})`;
+      retry.disabled = isRunning || pending === 0;
+      document.getElementById('btnDownloadPdf').disabled = pageBlocksMap.size === 0;
+    }
+
+    async function renderPreview(pNum) {
+      if (!pdfJsDoc) return;
+      pNum = Math.max(1, Math.min(pdfJsDoc.numPages, pNum));
+      document.getElementById('previewPageInput').value = pNum;
+
+      const page = await pdfJsDoc.getPage(pNum);
+      const vp = page.getViewport({ scale: 1.25 });
+      const cOrig = document.getElementById('canvasOrig');
+      cOrig.width = vp.width; cOrig.height = vp.height;
+      await page.render({ canvasContext: cOrig.getContext('2d'), viewport: vp }).promise;
+
+      const cTrans = document.getElementById('canvasTrans');
+      cTrans.width = vp.width; cTrans.height = vp.height;
+      const ctx = cTrans.getContext('2d');
+      ctx.drawImage(cOrig, 0, 0);
+
+      const blocks = pageBlocksMap.get(pNum);
+      document.getElementById('btnEditPage').disabled = !blocks || !blocks.length;
+      if (!blocks) return;
+
+      const sc = vp.scale;
+      for (const b of blocks) {
+        if (b.kind === 'CODE' || !b.translatedText) continue;
+        const x = Math.max(10, b.box.xMin * sc - 2), y = Math.max(8, b.box.yTop * sc - 2);
+        const w = Math.max(50, (Math.max(b.box.xMax + 2, (vp.width / sc) * 0.87) - b.box.xMin) * sc);
+        const h = Math.max(14, (b.box.yBottom - b.box.yTop + 3) * sc);
+
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = '#0f172a';
+        const fSize = b.kind === 'HEADING' ? 14 : 11.5;
+        ctx.font = `${b.kind === 'HEADING' ? 'bold ' : ''}${fSize}px Georgia, serif`;
+        let line = '', cy = y + fSize;
+        for (const wd of b.translatedText.split(/\s+/)) {
+          const test = line ? `${line} ${wd}` : wd;
+          if (ctx.measureText(test).width <= w - 4) line = test;
+          else { if (cy <= y + h) ctx.fillText(line, x + 2, cy); cy += fSize * 1.18; line = wd; }
+        }
+        if (line && cy <= y + h + 2) ctx.fillText(line, x + 2, cy);
+      }
+    }
+
+    async function processPage(pNum, isRetry = false) {
+      const page = await pdfJsDoc.getPage(pNum);
+      const vp = page.getViewport({ scale: 1.0 });
+      let blocks = pageBlocksMap.get(pNum);
+      if (!blocks) {
+        blocks = extractBlocks(await page.getTextContent(), vp);
+        pageBlocksMap.set(pNum, blocks);
+      }
+      const targets = blocks.filter(b => b.kind !== 'CODE' && b.status !== 'done');
+      if (!targets.length) { pageStatusMap.set(pNum, blocks.length ? 'done' : 'empty'); return { ok: true, empty: !blocks.length }; }
+
+      const sl = document.getElementById('sourceLang').value;
+      const tl = document.getElementById('targetLang').value;
+      const workers = parseInt(document.getElementById('workerCount').value, 10) || 4;
+      let cursor = 0, fails = 0;
+
+      await Promise.all(Array.from({ length: workers }, async () => {
+        while (cursor < targets.length && !shouldPause) {
+          const b = targets[cursor++];
+          try { b.translatedText = await translateUniversal(b.originalText, sl, tl, isRetry); b.status = 'done'; }
+          catch (_) { b.status = 'pending'; fails++; }
+        }
+      }));
+
+      const rem = blocks.filter(b => b.kind !== 'CODE' && b.status !== 'done').length;
+      pageStatusMap.set(pNum, rem === 0 ? 'done' : 'partial');
+      return { ok: rem === 0, fails };
+    }
+
+    async function runBatch(list, isRetry = false) {
+      if (!pdfJsDoc || isRunning) return;
+      isRunning = true; shouldPause = false;
+      document.getElementById('btnStart').disabled = true;
+      document.getElementById('btnPause').disabled = false;
+      document.getElementById('btnRetryPending').disabled = true;
+
+      await enableKeepAwake();
+      const t0 = Date.now(); let doneCount = 0;
+
+      for (const pNum of list) {
+        if (shouldPause) { addLog(`Pausado na pág. ${pNum}.`, 'warn'); break; }
+        document.getElementById('statusText').textContent = `Traduzindo pág. ${pNum} de ${list[list.length - 1]}...`;
+        const res = await processPage(pNum, isRetry);
+        doneCount++;
+
+        const mins = (Date.now() - t0) / 60000;
+        const spd = mins > 0.02 ? doneCount / mins : 0;
+        document.getElementById('statSpeed').textContent = spd.toFixed(1);
+        document.getElementById('statEta').textContent = spd > 0 ? `${Math.ceil((list.length - doneCount) / spd)}m` : '--';
+
+        const pct = Math.round((doneCount / list.length) * 100);
+        document.getElementById('mainProgressBar').style.width = pct + '%';
+        document.getElementById('percentText').textContent = pct + '%';
+
+        addLog(res.empty ? `Pág ${pNum}: Sem texto.` : (res.ok ? `Pág ${pNum}: Concluída` : `Pág ${pNum}: ${res.fails} pendente(s)`), res.ok ? 'ok' : 'warn');
+        updateStats();
+        if (doneCount === 1 || doneCount % 5 === 0) renderPreview(pNum).catch(() => {});
+      }
+
+      await disableKeepAwake();
+      isRunning = false;
+      document.getElementById('btnStart').disabled = false;
+      document.getElementById('btnPause').disabled = true;
+      document.getElementById('statusText').textContent = shouldPause ? 'Pausado' : 'Tradução finalizada!';
+      if (!shouldPause) showToast('Processamento concluído!');
+      updateStats();
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'tab-preview' && pdfJsDoc) renderPreview(parseInt(document.getElementById('previewPageInput').value, 10) || 1);
+      });
+    });
+
+    document.querySelectorAll('.engine-card').forEach(c => {
+      c.addEventListener('click', () => {
+        document.querySelectorAll('.engine-card').forEach(x => x.classList.remove('selected'));
+        c.classList.add('selected');
+        selectedEngine = c.dataset.engine;
+      });
+    });
+
+    document.getElementById('btnSwapLang').addEventListener('click', () => {
+      const s = document.getElementById('sourceLang');
+      const t = document.getElementById('targetLang');
+      const oldSrc = s.value === 'auto' ? detectedLangCode : s.value;
+      const oldDst = t.value.split('-')[0];
+      if ([...s.options].some(o => o.value === oldDst)) s.value = oldDst;
+      if ([...t.options].some(o => o.value === oldSrc)) t.value = oldSrc;
+      showToast('Idiomas invertidos!');
+    });
+
+    document.getElementById('btnPreloadModel').addEventListener('click', loadLocalModel);
+
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault(); dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
+    });
+    document.getElementById('pdfInput').addEventListener('change', e => {
+      if (e.target.files?.[0]) handleFile(e.target.files[0]);
+    });
+
+    async function handleFile(file) {
+      currentFileName = file.name;
+      originalPdfBytes = new Uint8Array(await file.arrayBuffer());
+      pdfJsDoc = await pdfjsLib.getDocument({ data: originalPdfBytes.slice() }).promise;
+      const total = pdfJsDoc.numPages;
+
+      document.getElementById('fileCard').style.display = 'flex';
+      document.getElementById('fileNameDisplay').textContent = file.name;
+      document.getElementById('filePagesDisplay').textContent = `${total} páginas detectadas`;
+      document.getElementById('startPage').value = 1;
+      document.getElementById('endPage').value = total;
+      document.getElementById('endPage').max = total;
+      document.getElementById('btnStart').disabled = false;
+      document.getElementById('btnGenerateSummary').disabled = false;
+
+      pageBlocksMap.clear(); pageStatusMap.clear(); updateStats();
+
+      let sample = '';
+      for (const sp of [1, 2, 5, 10, 15, 25, 30].filter(p => p <= total)) {
+        const tc = await (await pdfJsDoc.getPage(sp)).getTextContent();
+        sample += ' ' + tc.items.map(i => i.str).join(' ');
+        if (sample.length > 4500) break;
+      }
+      const det = detectLanguageFromText(sample);
+      detectedLangCode = det.code; detectedLangName = det.name;
+      document.getElementById('detectedLangChip').textContent = det.name;
+      document.getElementById('detectedConfDisplay').textContent = `Confiança: ${det.confidence}%`;
+      document.getElementById('statusText').textContent = `Pronto! ${total} págs • ${det.name}`;
+      showToast(`PDF carregado • Idioma: ${det.name}`);
+      addLog(`Carregado: ${file.name} (${total} págs) | Idioma: ${det.name} (${det.confidence}%).`, 'ok');
+    }
+
+    document.getElementById('btnPreset15').addEventListener('click', () => {
+      if (!pdfJsDoc) return;
+      document.getElementById('startPage').value = 1;
+      document.getElementById('endPage').value = Math.min(15, pdfJsDoc.numPages);
+    });
+    document.getElementById('btnPresetAll').addEventListener('click', () => {
+      if (!pdfJsDoc) return;
+      document.getElementById('startPage').value = 1;
+      document.getElementById('endPage').value = pdfJsDoc.numPages;
+    });
+    document.getElementById('btnStart').addEventListener('click', () => {
+      if (!pdfJsDoc) return;
+      const s = Math.max(1, parseInt(document.getElementById('startPage').value, 10) || 1);
+      const e = Math.min(pdfJsDoc.numPages, parseInt(document.getElementById('endPage').value, 10) || pdfJsDoc.numPages);
+      const list = []; for (let p = s; p <= e; p++) list.push(p);
+      runBatch(list, false);
+    });
+    document.getElementById('btnPause').addEventListener('click', () => { shouldPause = true; });
+    document.getElementById('btnRetryPending').addEventListener('click', () => {
+      const list = [];
+      for (const [p, blocks] of pageBlocksMap.entries()) if (blocks.some(b => b.kind !== 'CODE' && b.status !== 'done')) list.push(p);
+      if (list.length) runBatch(list.sort((a, b) => a - b), true);
+    });
+
+    document.getElementById('btnDownloadPdf').addEventListener('click', async () => {
+      if (!originalPdfBytes || !pageBlocksMap.size) return;
+      const btn = document.getElementById('btnDownloadPdf');
+      btn.disabled = true; btn.textContent = 'Montando PDF...';
+      try {
+        const tl = document.getElementById('targetLang').value.toUpperCase();
+        const outDoc = await PDFLib.PDFDocument.load(originalPdfBytes);
+        for (const [p, blocks] of pageBlocksMap.entries()) {
+          if (blocks.some(b => b.kind !== 'CODE' && b.translatedText)) await drawBlocksOnPdfPage(outDoc, p - 1, blocks);
+        }
+        const url = URL.createObjectURL(new Blob([await outDoc.save()], { type: 'application/pdf' }));
+        const a = document.createElement('a'); a.href = url;
+        a.download = `${currentFileName.replace(/\.pdf$/i, '')}_${tl}_v65.pdf`;
+        a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+        showToast('Download do PDF iniciado!');
+      } catch (e) { addLog('Erro PDF: ' + e.message, 'err'); }
+      finally { btn.disabled = false; btn.textContent = 'Baixar PDF Final'; }
+    });
+
+    document.getElementById('btnGenerateSummary').addEventListener('click', generateBookSummary);
+    document.getElementById('btnCopySummary').addEventListener('click', () => {
+      if (!lastGeneratedSummary) return;
+      navigator.clipboard?.writeText(lastGeneratedSummary);
+      showToast('Resumo copiado!');
+    });
+    document.getElementById('btnDownloadSummary').addEventListener('click', () => {
+      if (!lastGeneratedSummary) return;
+      const url = URL.createObjectURL(new Blob([lastGeneratedSummary], { type: 'text/markdown;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url;
+      a.download = `${currentFileName.replace(/\.pdf$/i, '')}_Resumo.md`;
+      a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    });
+
+    document.getElementById('btnPrevPage').addEventListener('click', () => renderPreview((parseInt(document.getElementById('previewPageInput').value, 10) || 1) - 1));
+    document.getElementById('btnNextPage').addEventListener('click', () => renderPreview((parseInt(document.getElementById('previewPageInput').value, 10) || 1) + 1));
+    document.getElementById('previewPageInput').addEventListener('change', e => renderPreview(parseInt(e.target.value, 10) || 1));
+
+    document.getElementById('btnEditPage').addEventListener('click', () => {
+      const pNum = parseInt(document.getElementById('previewPageInput').value, 10) || 1;
+      const blocks = pageBlocksMap.get(pNum);
+      if (!blocks) return;
+      document.getElementById('editModalTitle').textContent = `Editar Parágrafos — Página ${pNum}`;
+      const body = document.getElementById('editModalBody');
+      body.innerHTML = '';
+      blocks.forEach((b, idx) => {
+        if (b.kind === 'CODE') return;
+        const wrap = document.createElement('div'); wrap.className = 'edit-item';
+        const lbl = document.createElement('small');
+        lbl.textContent = `${b.kind === 'HEADING' ? 'TÍTULO' : 'PARÁGRAFO'} #${idx + 1}: ${b.originalText.slice(0, 68)}...`;
+        const ta = document.createElement('textarea');
+        ta.dataset.idx = idx; ta.value = b.translatedText || b.originalText;
+        wrap.appendChild(lbl); wrap.appendChild(ta); body.appendChild(wrap);
+      });
+      document.getElementById('editModalBackdrop').classList.add('open');
+    });
+
+    const closeModal = () => document.getElementById('editModalBackdrop').classList.remove('open');
+    document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+    document.getElementById('btnCancelModal').addEventListener('click', closeModal);
+    document.getElementById('btnSaveModal').addEventListener('click', async () => {
+      const pNum = parseInt(document.getElementById('previewPageInput').value, 10) || 1;
+      const blocks = pageBlocksMap.get(pNum);
+      if (blocks) {
+        document.querySelectorAll('#editModalBody textarea').forEach(ta => {
+          const idx = parseInt(ta.dataset.idx, 10);
+          if (blocks[idx]) { blocks[idx].translatedText = ta.value.trim(); blocks[idx].status = 'done'; }
+        });
+        pageStatusMap.set(pNum, 'done'); updateStats(); await renderPreview(pNum);
+        showToast(`Página ${pNum} atualizada!`);
+      }
+      closeModal();
+    });
+
+    document.getElementById('btnClearLogs').addEventListener('click', () => { document.getElementById('logBox').innerHTML = ''; });
+    addLog('TechBook AI v6.5 pronto para uso.', 'info');
+  </script>
+</body>
+</html>
